@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Achievements - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="achievements-container">
+    <div class="achievements-header">
+        <h1>🎖️ Achievements</h1>
+    </div>
+
+    <div class="achievements-tabs">
+        <button class="tab-btn active" onclick="showTab('badges')">Badges</button>
+        <button class="tab-btn" onclick="showTab('milestones')">Milestones</button>
+    </div>
+
+    <div id="tab-content" class="tab-content">
+        <div id="badges-tab">
+            <h2>Your Badges</h2>
+            <div id="badges-list" class="badges-grid"></div>
+        </div>
+        <div id="milestones-tab" style="display: none;">
+            <h2>Your Milestones</h2>
+            <div id="milestones-list" class="milestones-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadBadges();
+    loadMilestones();
+});
+
+function showTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    document.getElementById('badges-tab').style.display = tabName === 'badges' ? 'block' : 'none';
+    document.getElementById('milestones-tab').style.display = tabName === 'milestones' ? 'block' : 'none';
+}
+
+async function loadBadges() {
+    try {
+        const response = await fetch('/api/achievements/badges/');
+        const data = await response.json();
+        
+        const badgesList = document.getElementById('badges-list');
+        badgesList.innerHTML = '';
+        
+        if (data.badges.length === 0) {
+            badgesList.innerHTML = '<p class="empty-state">No badges earned yet. Keep working!</p>';
+            return;
+        }
+        
+        data.badges.forEach(badge => {
+            const badgeCard = document.createElement('div');
+            badgeCard.className = `badge-card rarity-${badge.rarity}`;
+            badgeCard.innerHTML = `
+                <div class="badge-icon">${badge.icon}</div>
+                <div class="badge-name">${badge.name}</div>
+                <div class="badge-description">${badge.description}</div>
+                <div class="badge-rarity">${badge.rarity}</div>
+                <div class="badge-date">Earned: ${new Date(badge.earned_at).toLocaleDateString()}</div>
+            `;
+            badgesList.appendChild(badgeCard);
+        });
+    } catch (error) {
+        console.error('Error loading badges:', error);
+    }
+}
+
+async function loadMilestones() {
+    try {
+        const response = await fetch('/api/achievements/milestones/');
+        const data = await response.json();
+        
+        const milestonesList = document.getElementById('milestones-list');
+        milestonesList.innerHTML = '';
+        
+        if (data.milestones.length === 0) {
+            milestonesList.innerHTML = '<p class="empty-state">No milestones achieved yet.</p>';
+            return;
+        }
+        
+        data.milestones.forEach(milestone => {
+            const milestoneCard = document.createElement('div');
+            milestoneCard.className = 'milestone-card';
+            milestoneCard.innerHTML = `
+                <h3>${milestone.name}</h3>
+                <p>${milestone.description}</p>
+                <div class="milestone-message">${milestone.celebration_message}</div>
+                <div class="milestone-date">Achieved: ${new Date(milestone.achieved_at).toLocaleDateString()}</div>
+                <button class="btn btn-primary" onclick="viewCertificate(${milestone.id})">View/Download Certificate</button>
+            `;
+            milestonesList.appendChild(milestoneCard);
+        });
+    } catch (error) {
+        console.error('Error loading milestones:', error);
+    }
+}
+
+async function viewCertificate(milestoneId) {
+    // Open certificate PDF in new window
+    window.open(`/api/achievements/certificate/${milestoneId}/`, '_blank');
+}
+</script>
+{% endblock %}
+

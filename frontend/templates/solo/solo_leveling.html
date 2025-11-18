@@ -1,0 +1,514 @@
+{% extends 'base.html' %}
+
+{% block title %}Solo Leveling - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="solo-container">
+    <div class="solo-header">
+        <h1>⚡ Solo Leveling</h1>
+        <button class="btn btn-primary" onclick="showAddTaskModal()">+ Add Task</button>
+    </div>
+
+    <div class="categories-section">
+        <h2>Categories</h2>
+        <div id="categories-list" class="categories-grid"></div>
+    </div>
+
+    <div class="tasks-section">
+        <div class="tasks-header">
+            <h2>Your Tasks</h2>
+            <div class="tasks-view-toggle">
+                <button class="btn btn-primary btn-sm active" id="today-view-btn" onclick="showTodayTasks()">Today's Tasks</button>
+                <button class="btn btn-secondary btn-sm" id="history-view-btn" onclick="showHistoryTasks()">View History (30 days)</button>
+            </div>
+        </div>
+        <div class="task-filters" id="task-filters">
+            <select id="category-filter" onchange="loadTasks()" title="Filter by category">
+                <option value="">All Categories</option>
+            </select>
+            <select id="status-filter" onchange="loadTasks()" title="Filter by status">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div id="tasks-list" class="tasks-list"></div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="add-task-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddTaskModal()">&times;</span>
+        <h2>Add New Task</h2>
+        <form id="add-task-form" onsubmit="addTask(event)">
+            <div class="form-group">
+                <label for="task-title">Title *</label>
+                <input type="text" id="task-title" required>
+            </div>
+            <div class="form-group">
+                <label for="task-category">Category *</label>
+                <select id="task-category" required></select>
+            </div>
+            <div class="form-group">
+                <label for="task-description">Description</label>
+                <textarea id="task-description" rows="3"></textarea>
+            </div>
+            
+            <!-- Gym Fields -->
+            <div id="gym-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-gym-duration">Duration (minutes)</label>
+                    <input type="number" id="task-gym-duration" min="1" placeholder="e.g., 30">
+                </div>
+                <div class="form-group">
+                    <label for="task-gym-notes">Notes (optional)</label>
+                    <textarea id="task-gym-notes" rows="2" placeholder="Workout notes..."></textarea>
+                </div>
+            </div>
+            
+            <!-- Coding Fields -->
+            <div id="coding-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-coding-language">Programming Language</label>
+                    <input type="text" id="task-coding-language" placeholder="e.g., Python, JavaScript">
+                </div>
+                <div class="form-group">
+                    <label for="task-coding-hours">Duration (hours)</label>
+                    <input type="number" id="task-coding-hours" step="0.1" min="0">
+                </div>
+            </div>
+            
+            <!-- Academics Fields -->
+            <div id="academics-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-academics-subject">Subject</label>
+                    <input type="text" id="task-academics-subject" placeholder="e.g., Mathematics, Physics">
+                </div>
+                <div class="form-group">
+                    <label for="task-academics-topic">Topic</label>
+                    <input type="text" id="task-academics-topic" placeholder="e.g., Calculus, Thermodynamics">
+                </div>
+                <div class="form-group">
+                    <label for="task-academics-duration">Study Duration (minutes)</label>
+                    <input type="number" id="task-academics-duration" min="1">
+                </div>
+            </div>
+            
+            <!-- Content Creation Fields -->
+            <div id="content-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-content-type">Content Type</label>
+                    <select id="task-content-type">
+                        <option value="">Select Type</option>
+                        <option value="video">Video</option>
+                        <option value="edit">Edit</option>
+                        <option value="script">Script</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="task-content-duration">Duration (minutes)</label>
+                    <input type="number" id="task-content-duration" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="task-content-proof-link">Proof Link (optional)</label>
+                    <input type="url" id="task-content-proof-link" placeholder="https://...">
+                </div>
+            </div>
+            
+            <!-- Reading Fields -->
+            <div id="reading-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-reading-book">Book Name</label>
+                    <input type="text" id="task-reading-book" placeholder="e.g., The Art of War">
+                </div>
+                <div class="form-group">
+                    <label for="task-reading-pages">Pages Read</label>
+                    <input type="number" id="task-reading-pages" min="1">
+                </div>
+            </div>
+            
+            <!-- Habits Fields -->
+            <div id="habits-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-habit-name">Habit Name</label>
+                    <input type="text" id="task-habit-name" placeholder="e.g., Meditation, Water intake">
+                </div>
+                <div class="form-group">
+                    <label for="task-habit-streak-target">Streak Target (days)</label>
+                    <input type="number" id="task-habit-streak-target" min="1">
+                </div>
+            </div>
+            
+            <!-- Custom/Other Fields -->
+            <div id="custom-fields" class="category-specific-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="task-duration">Duration (minutes)</label>
+                    <input type="number" id="task-duration" min="1">
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Create Task</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategories();
+    showTodayTasks(); // Default to today's view
+});
+
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/solo/categories/');
+        const data = await response.json();
+        
+        const categoriesList = document.getElementById('categories-list');
+        const categoryFilter = document.getElementById('category-filter');
+        const taskCategory = document.getElementById('task-category');
+        
+        categoriesList.innerHTML = '';
+        categoryFilter.innerHTML = '<option value="">All Categories</option>';
+        taskCategory.innerHTML = '<option value="">Select Category</option>';
+        
+        data.categories.forEach(cat => {
+            // Display categories
+            const catCard = document.createElement('div');
+            catCard.className = 'category-card';
+            catCard.style.borderColor = cat.color;
+            catCard.innerHTML = `
+                <div class="category-icon">${cat.icon}</div>
+                <div class="category-name">${cat.name}</div>
+                <div class="category-multiplier">${cat.xp_multiplier}x XP</div>
+            `;
+            categoriesList.appendChild(catCard);
+            
+            // Add to filters
+            const option1 = document.createElement('option');
+            option1.value = cat.id;
+            option1.textContent = cat.name;
+            categoryFilter.appendChild(option1);
+            
+            const option2 = document.createElement('option');
+            option2.value = cat.id;
+            option2.textContent = cat.name;
+            option2.setAttribute('data-category-type', cat.category_type);
+            taskCategory.appendChild(option2);
+        });
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+let currentView = 'today'; // 'today' or 'history'
+
+function showTodayTasks() {
+    currentView = 'today';
+    document.getElementById('today-view-btn').classList.add('active');
+    document.getElementById('history-view-btn').classList.remove('active');
+    document.getElementById('task-filters').style.display = 'block';
+    loadTasks();
+}
+
+function showHistoryTasks() {
+    currentView = 'history';
+    document.getElementById('today-view-btn').classList.remove('active');
+    document.getElementById('history-view-btn').classList.add('active');
+    document.getElementById('task-filters').style.display = 'none';
+    loadTasks();
+}
+
+async function loadTasks() {
+    try {
+        const categoryId = document.getElementById('category-filter')?.value || '';
+        const status = document.getElementById('status-filter')?.value || '';
+        
+        let url = '/api/solo/tasks/';
+        const params = new URLSearchParams();
+        
+        if (currentView === 'today') {
+            // Only show today's tasks
+            const today = new Date().toISOString().split('T')[0];
+            params.append('date', today);
+        } else if (currentView === 'history') {
+            // Show last 30 days
+            params.append('days', '30');
+        }
+        
+        if (categoryId) params.append('category', categoryId);
+        if (status) params.append('status', status);
+        if (params.toString()) url += '?' + params.toString();
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const tasksList = document.getElementById('tasks-list');
+        tasksList.innerHTML = '';
+        
+        if (data.tasks.length === 0) {
+            tasksList.innerHTML = `<p class="empty-state">No tasks found${currentView === 'today' ? ' for today' : ' in the last 30 days'}. Create your first task!</p>`;
+            return;
+        }
+        
+        if (currentView === 'history') {
+            // Group tasks by date
+            const tasksByDate = {};
+            data.tasks.forEach(task => {
+                const taskDate = new Date(task.created_at).toISOString().split('T')[0];
+                if (!tasksByDate[taskDate]) {
+                    tasksByDate[taskDate] = [];
+                }
+                tasksByDate[taskDate].push(task);
+            });
+            
+            // Sort dates (newest first)
+            const sortedDates = Object.keys(tasksByDate).sort((a, b) => new Date(b) - new Date(a));
+            
+            sortedDates.forEach(date => {
+                const dateHeader = document.createElement('div');
+                dateHeader.className = 'history-date-header';
+                dateHeader.innerHTML = `<h3>${formatDate(date)}</h3>`;
+                tasksList.appendChild(dateHeader);
+                
+                tasksByDate[date].forEach(task => {
+                    const taskCard = createTaskCard(task);
+                    tasksList.appendChild(taskCard);
+                });
+            });
+        } else {
+            // Today's view - simple list
+            data.tasks.forEach(task => {
+                const taskCard = createTaskCard(task);
+                tasksList.appendChild(taskCard);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+    }
+}
+
+function createTaskCard(task) {
+    const taskCard = document.createElement('div');
+    taskCard.className = `task-card task-${task.status}`;
+    taskCard.innerHTML = `
+        <div class="task-header">
+            <h3>${task.title}</h3>
+            <span class="task-status badge-${task.status}">${task.status}</span>
+        </div>
+        <div class="task-body">
+            <p>${task.description || 'No description'}</p>
+            <div class="task-meta">
+                <span class="task-category" style="color: ${task.category.color}">
+                    ${task.category.icon} ${task.category.name}
+                </span>
+                ${task.awarded_xp > 0 ? `<span class="task-xp">+${task.awarded_xp} XP</span>` : ''}
+            </div>
+            ${task.status === 'pending' ? `
+                <button class="btn btn-success btn-sm" onclick="completeTask(${task.id})">Complete</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteTask(${task.id})">Delete</button>
+            ` : ''}
+        </div>
+    `;
+    return taskCard;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+        return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+    } else {
+        return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+}
+
+function showAddTaskModal() {
+    document.getElementById('add-task-modal').style.display = 'block';
+}
+
+function closeAddTaskModal() {
+    document.getElementById('add-task-modal').style.display = 'none';
+}
+
+// Show/hide fields based on category
+function updateTaskFormFields() {
+    const categorySelect = document.getElementById('task-category');
+    const categoryId = categorySelect.value;
+    
+    // Hide all category-specific fields
+    document.querySelectorAll('.category-specific-fields').forEach(field => {
+        field.style.display = 'none';
+    });
+    
+    if (!categoryId) return;
+    
+    // Get category type from selected option's data attribute
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    const categoryType = selectedOption.getAttribute('data-category-type') || '';
+    
+    // Show relevant fields based on category type
+    if (categoryType === 'gym') {
+        document.getElementById('gym-fields').style.display = 'block';
+    } else if (categoryType === 'coding') {
+        document.getElementById('coding-fields').style.display = 'block';
+    } else if (categoryType === 'academics') {
+        document.getElementById('academics-fields').style.display = 'block';
+    } else if (categoryType === 'content') {
+        document.getElementById('content-fields').style.display = 'block';
+    } else if (categoryType === 'reading') {
+        document.getElementById('reading-fields').style.display = 'block';
+    } else if (categoryType === 'habits') {
+        document.getElementById('habits-fields').style.display = 'block';
+    } else {
+        document.getElementById('custom-fields').style.display = 'block';
+    }
+}
+
+// Add event listener to category select
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('task-category');
+    if (categorySelect) {
+        categorySelect.addEventListener('change', updateTaskFormFields);
+    }
+});
+
+async function addTask(event) {
+    event.preventDefault();
+    
+    const categorySelect = document.getElementById('task-category');
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    const categoryType = selectedOption.getAttribute('data-category-type') || '';
+    
+    const taskData = {
+        title: document.getElementById('task-title').value,
+        category_id: categorySelect.value,
+        description: document.getElementById('task-description').value,
+        // Base XP is auto-calculated by backend, default is 10
+    };
+    
+    // Add category-specific fields based on category type
+    if (categoryType === 'gym') {
+        taskData.duration_minutes = document.getElementById('task-gym-duration').value || null;
+        // Store notes in description if provided
+        const gymNotes = document.getElementById('task-gym-notes').value;
+        if (gymNotes) {
+            taskData.description = (taskData.description ? taskData.description + '\n' : '') + 'Workout Notes: ' + gymNotes;
+        }
+    } else if (categoryType === 'coding') {
+        taskData.coding_language = document.getElementById('task-coding-language').value;
+        taskData.coding_hours = document.getElementById('task-coding-hours').value || null;
+    } else if (categoryType === 'academics') {
+        taskData.academics_subject = document.getElementById('task-academics-subject').value;
+        taskData.academics_topic = document.getElementById('task-academics-topic').value;
+        taskData.duration_minutes = document.getElementById('task-academics-duration').value || null;
+    } else if (categoryType === 'content') {
+        taskData.content_type = document.getElementById('task-content-type').value;
+        taskData.duration_minutes = document.getElementById('task-content-duration').value || null;
+        taskData.content_proof_link = document.getElementById('task-content-proof-link').value;
+    } else if (categoryType === 'reading') {
+        taskData.reading_book = document.getElementById('task-reading-book').value;
+        taskData.reading_pages = document.getElementById('task-reading-pages').value || null;
+    } else if (categoryType === 'habits') {
+        taskData.habit_name = document.getElementById('task-habit-name').value;
+        taskData.habit_streak_target = document.getElementById('task-habit-streak-target').value || null;
+    } else {
+        taskData.duration_minutes = document.getElementById('task-duration').value || null;
+    }
+    
+    try {
+        const response = await fetch('/api/solo/tasks/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(taskData),
+        });
+        
+        if (response.ok) {
+            closeAddTaskModal();
+            document.getElementById('add-task-form').reset();
+            loadTasks();
+        } else {
+            alert('Error creating task');
+        }
+    } catch (error) {
+        console.error('Error adding task:', error);
+        alert('Error creating task');
+    }
+}
+
+async function completeTask(taskId) {
+    try {
+        const response = await fetch(`/api/solo/tasks/${taskId}/complete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (data.leveled_up) {
+                showCelebration('level_up', data.user.current_level);
+            }
+            if (data.badges_earned && data.badges_earned.length > 0) {
+                data.badges_earned.forEach(badge => {
+                    showCelebration('badge', badge);
+                });
+            }
+            loadTasks();
+            // Reload dashboard stats if on dashboard
+            if (typeof loadDashboardStats === 'function') {
+                loadDashboardStats();
+            }
+        }
+    } catch (error) {
+        console.error('Error completing task:', error);
+    }
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+        const response = await fetch(`/api/solo/tasks/${taskId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        
+        if (response.ok) {
+            loadTasks();
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

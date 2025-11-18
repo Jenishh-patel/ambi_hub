@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <div class="analytics-header">
+        <h1>📊 Analytics</h1>
+    </div>
+
+    <div class="analytics-tabs">
+        <button class="tab-btn active" onclick="showTab('daily')">Daily</button>
+        <button class="tab-btn" onclick="showTab('weekly')">Weekly</button>
+        <button class="tab-btn" onclick="showTab('monthly')">Monthly</button>
+        <button class="tab-btn" onclick="showTab('timeline')">XP Timeline</button>
+        <button class="tab-btn" onclick="showTab('categories')">Categories</button>
+    </div>
+
+    <div id="tab-content" class="tab-content">
+        <div id="daily-tab">
+            <h2>Daily Analytics</h2>
+            <div id="daily-chart-container">
+                <canvas id="daily-chart"></canvas>
+            </div>
+        </div>
+        <div id="weekly-tab" style="display: none;">
+            <h2>Weekly Analytics</h2>
+            <div id="weekly-chart-container">
+                <canvas id="weekly-chart"></canvas>
+            </div>
+        </div>
+        <div id="monthly-tab" style="display: none;">
+            <h2>Monthly Analytics</h2>
+            <div id="monthly-chart-container">
+                <canvas id="monthly-chart"></canvas>
+            </div>
+        </div>
+        <div id="timeline-tab" style="display: none;">
+            <h2>XP Timeline</h2>
+            <div id="timeline-chart-container">
+                <canvas id="timeline-chart"></canvas>
+            </div>
+        </div>
+        <div id="categories-tab" style="display: none;">
+            <h2>Category Trends</h2>
+            <div id="categories-chart-container">
+                <canvas id="categories-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="export-section">
+        <button class="btn btn-primary" onclick="exportPDF()">Export PDF Report</button>
+    </div>
+</div>
+
+<script>
+let chartInstances = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    showTab('daily');
+});
+
+function showTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    document.querySelectorAll('[id$="-tab"]').forEach(tab => tab.style.display = 'none');
+    document.getElementById(`${tabName}-tab`).style.display = 'block';
+    
+    switch(tabName) {
+        case 'daily':
+            loadDailyAnalytics();
+            break;
+        case 'weekly':
+            loadWeeklyAnalytics();
+            break;
+        case 'monthly':
+            loadMonthlyAnalytics();
+            break;
+        case 'timeline':
+            loadXPTimeline();
+            break;
+        case 'categories':
+            loadCategoryTrends();
+            break;
+    }
+}
+
+async function loadDailyAnalytics() {
+    try {
+        const response = await fetch('/api/analytics/daily/');
+        const data = await response.json();
+        
+        if (chartInstances.daily) {
+            chartInstances.daily.destroy();
+        }
+        
+        chartInstances.daily = new Chart(document.getElementById('daily-chart'), {
+            type: 'bar',
+            data: {
+                labels: ['Tasks', 'XP'],
+                datasets: [{
+                    label: 'Today',
+                    data: [data.total_tasks, data.total_xp],
+                    backgroundColor: ['#3B82F6', '#10B981'],
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading daily analytics:', error);
+    }
+}
+
+async function loadWeeklyAnalytics() {
+    try {
+        const response = await fetch('/api/analytics/weekly/');
+        const data = await response.json();
+        
+        const labels = Object.keys(data.daily_data).sort();
+        const tasksData = labels.map(day => data.daily_data[day].tasks);
+        const xpData = labels.map(day => data.daily_data[day].xp);
+        
+        if (chartInstances.weekly) {
+            chartInstances.weekly.destroy();
+        }
+        
+        chartInstances.weekly = new Chart(document.getElementById('weekly-chart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Tasks',
+                    data: tasksData,
+                    borderColor: '#3B82F6',
+                    tension: 0.1
+                }, {
+                    label: 'XP',
+                    data: xpData,
+                    borderColor: '#10B981',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+            }
+        });
+    } catch (error) {
+        console.error('Error loading weekly analytics:', error);
+    }
+}
+
+async function loadMonthlyAnalytics() {
+    try {
+        const response = await fetch('/api/analytics/monthly/');
+        const data = await response.json();
+        
+        const labels = Object.keys(data.weekly_data).sort();
+        const tasksData = labels.map(week => data.weekly_data[week].tasks);
+        const xpData = labels.map(week => data.weekly_data[week].xp);
+        
+        if (chartInstances.monthly) {
+            chartInstances.monthly.destroy();
+        }
+        
+        chartInstances.monthly = new Chart(document.getElementById('monthly-chart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Tasks',
+                    data: tasksData,
+                    backgroundColor: '#3B82F6',
+                }, {
+                    label: 'XP',
+                    data: xpData,
+                    backgroundColor: '#10B981',
+                }]
+            },
+            options: {
+                responsive: true,
+            }
+        });
+    } catch (error) {
+        console.error('Error loading monthly analytics:', error);
+    }
+}
+
+async function loadXPTimeline() {
+    try {
+        const response = await fetch('/api/analytics/xp-timeline/?days=30');
+        const data = await response.json();
+        
+        if (chartInstances.timeline) {
+            chartInstances.timeline.destroy();
+        }
+        
+        chartInstances.timeline = new Chart(document.getElementById('timeline-chart'), {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Cumulative XP',
+                    data: data.xp_data,
+                    borderColor: '#8B5CF6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading XP timeline:', error);
+    }
+}
+
+async function loadCategoryTrends() {
+    try {
+        const response = await fetch('/api/analytics/category-trends/?days=30');
+        const data = await response.json();
+        
+        const categories = Object.keys(data.categories);
+        const tasksData = categories.map(cat => data.categories[cat].total_tasks);
+        const xpData = categories.map(cat => data.categories[cat].total_xp);
+        const colors = categories.map(cat => data.categories[cat].color);
+        
+        if (chartInstances.categories) {
+            chartInstances.categories.destroy();
+        }
+        
+        chartInstances.categories = new Chart(document.getElementById('categories-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: categories,
+                datasets: [{
+                    data: xpData,
+                    backgroundColor: colors,
+                }]
+            },
+            options: {
+                responsive: true,
+            }
+        });
+    } catch (error) {
+        console.error('Error loading category trends:', error);
+    }
+}
+
+async function exportPDF() {
+    try {
+        const response = await fetch('/api/analytics/export-pdf/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                report_type: 'weekly',
+                start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                end_date: new Date().toISOString().split('T')[0],
+            }),
+        });
+        
+        const data = await response.json();
+        alert('PDF export initiated. Check your reports section.');
+    } catch (error) {
+        console.error('Error exporting PDF:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

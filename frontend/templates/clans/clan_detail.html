@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ clan.name }} - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="clan-detail-container">
+    <div class="clan-header">
+        <div class="clan-icon-large">{{ clan.icon }}</div>
+        <div class="clan-title">
+            <h1>{{ clan.name }}</h1>
+            <p>{{ clan.description }}</p>
+        </div>
+    </div>
+
+    <div class="clan-tabs">
+        <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
+        <button class="tab-btn" onclick="showTab('members')">Members</button>
+        <button class="tab-btn" onclick="showTab('challenges')">Challenges</button>
+        <button class="tab-btn" onclick="showTab('leaderboard')">Leaderboard</button>
+        <button class="tab-btn" onclick="showTab('chat')">Chat</button>
+        {% if is_leader %}
+        <a href="{% url 'leader_dashboard' clan.id %}" class="btn btn-primary">Leader Dashboard</a>
+        {% endif %}
+    </div>
+
+    <div id="tab-content" class="tab-content">
+        <!-- Content loaded via JavaScript -->
+    </div>
+</div>
+
+<script>
+const clanId = {{ clan.id }};
+let isMember = false;
+let isLeader = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadClanInfo();
+    showTab('dashboard');
+});
+
+async function loadClanInfo() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/`);
+        const data = await response.json();
+        isMember = data.is_member;
+        isLeader = data.is_leader;
+        
+        if (!isMember && data.visibility === 'public') {
+            // Show join button
+        }
+    } catch (error) {
+        console.error('Error loading clan info:', error);
+    }
+}
+
+function showTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const content = document.getElementById('tab-content');
+    
+    switch(tabName) {
+        case 'dashboard':
+            loadClanDashboard();
+            break;
+        case 'members':
+            loadClanMembers();
+            break;
+        case 'challenges':
+            loadClanChallenges();
+            break;
+        case 'leaderboard':
+            loadClanLeaderboard();
+            break;
+        case 'chat':
+            loadClanChat();
+            break;
+    }
+}
+
+async function loadClanDashboard() {
+    const content = document.getElementById('tab-content');
+    content.innerHTML = '<p>Loading dashboard...</p>';
+    // Implement dashboard loading
+}
+
+async function loadClanMembers() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/members/`);
+        const data = await response.json();
+        
+        const content = document.getElementById('tab-content');
+        content.innerHTML = `
+            <div class="members-list">
+                ${data.members.map(member => `
+                    <div class="member-card">
+                        <div class="member-avatar">${member.avatar ? `<img src="${member.avatar}">` : '👤'}</div>
+                        <div class="member-info">
+                            <h3>${member.username}</h3>
+                            <p>Level ${member.level} • ${member.total_contribution_xp} XP</p>
+                            <span class="badge-${member.role}">${member.role}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading members:', error);
+    }
+}
+
+async function loadClanChallenges() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/challenges/`);
+        const data = await response.json();
+        
+        const content = document.getElementById('tab-content');
+        content.innerHTML = `
+            ${isLeader ? '<button class="btn btn-primary" onclick="showCreateChallengeModal()">+ Create Challenge</button>' : ''}
+            <div class="challenges-list">
+                ${data.challenges.map(challenge => `
+                    <div class="challenge-card">
+                        <h3>${challenge.title}</h3>
+                        <p>${challenge.description}</p>
+                        <div class="challenge-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${challenge.progress}%"></div>
+                            </div>
+                            <span>${challenge.progress}% (${challenge.target_xp} XP target)</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading challenges:', error);
+    }
+}
+
+async function loadClanLeaderboard() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/leaderboard/`);
+        const data = await response.json();
+        
+        const content = document.getElementById('tab-content');
+        content.innerHTML = `
+            <div class="leaderboard">
+                ${data.leaderboard.map(entry => `
+                    <div class="leaderboard-entry">
+                        <span class="rank">#${entry.rank}</span>
+                        <div class="entry-user">
+                            ${entry.user.avatar ? `<img src="${entry.user.avatar}">` : '👤'}
+                            <span>${entry.user.username}</span>
+                        </div>
+                        <span class="entry-xp">${entry.contribution_xp} XP</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading leaderboard:', error);
+    }
+}
+
+async function loadClanChat() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/messages/`);
+        const data = await response.json();
+        
+        const content = document.getElementById('tab-content');
+        content.innerHTML = `
+            <div class="chat-container">
+                <div class="chat-messages">
+                    ${data.messages.map(msg => `
+                        <div class="chat-message">
+                            <div class="message-user">${msg.user.username}</div>
+                            <div class="message-content">${msg.content}</div>
+                            <div class="message-time">${new Date(msg.created_at).toLocaleString()}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <form class="chat-form" onsubmit="sendMessage(event)">
+                    <input type="text" id="message-input" placeholder="Type a message..." required>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading chat:', error);
+    }
+}
+
+async function sendMessage(event) {
+    event.preventDefault();
+    const content = document.getElementById('message-input').value;
+    
+    try {
+        const response = await fetch(`/api/clans/${clanId}/messages/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ content }),
+        });
+        
+        if (response.ok) {
+            document.getElementById('message-input').value = '';
+            loadClanChat();
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

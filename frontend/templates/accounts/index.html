@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Ambitious Hub - Gamified Productivity Platform{% endblock %}
+
+{% block content %}
+<div class="landing-page">
+    <div class="hero-section">
+        <h1 class="hero-title">🚀 Ambitious Hub</h1>
+        <p class="hero-subtitle">Level up your productivity with gamification</p>
+        <div class="hero-buttons">
+            <a href="{% url 'register' %}" class="btn btn-primary btn-large">Get Started</a>
+            <a href="{% url 'login' %}" class="btn btn-secondary btn-large">Login</a>
+        </div>
+    </div>
+
+    <div class="features-section">
+        <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>Solo Leveling</h3>
+            <p>Track your progress, earn XP, and level up through consistent productivity</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🏆</div>
+            <h3>Clan Games</h3>
+            <p>Join clans, compete in challenges, and collaborate with others</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🎖️</div>
+            <h3>Achievements</h3>
+            <p>Unlock badges, reach milestones, and celebrate your wins</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Analytics</h3>
+            <p>Visualize your progress with detailed charts and reports</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block title %}Workout - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="workout-container">
+    <div class="workout-header">
+        <h1>💪 Workout Tracker</h1>
+        <div class="workout-actions">
+            <button class="btn btn-primary" onclick="showLogSessionModal()">+ Log Workout</button>
+            <button class="btn btn-secondary" onclick="exportMonthlyReport()">Export Monthly Report</button>
+        </div>
+    </div>
+
+    <div class="workout-tabs">
+        <button class="tab-btn active" onclick="showTab('library', this)">Exercise Library</button>
+        <button class="tab-btn" onclick="showTab('logger', this)">Log Session</button>
+        <button class="tab-btn" onclick="showTab('analytics', this)">Analytics</button>
+        <button class="tab-btn" onclick="showTab('records', this)">Personal Records</button>
+    </div>
+
+    <!-- Exercise Library Tab -->
+    <div id="library-tab" class="tab-content active">
+        <div class="library-header">
+            <h2>Exercise Library</h2>
+            <button class="btn btn-primary btn-sm" onclick="showAddExerciseModal()">+ Add Exercise</button>
+        </div>
+        <div class="exercise-filters">
+            <select id="category-filter" onchange="filterExercises()">
+                <option value="">All Categories</option>
+                <option value="push">Push</option>
+                <option value="pull">Pull</option>
+                <option value="legs">Legs</option>
+                <option value="core">Core</option>
+                <option value="cardio">Cardio</option>
+                <option value="custom">Custom</option>
+            </select>
+        </div>
+        <div id="exercises-grid" class="exercises-grid"></div>
+    </div>
+
+    <!-- Log Session Tab -->
+    <div id="logger-tab" class="tab-content" style="display: none;">
+        <div class="session-logger">
+            <div class="form-group">
+                <label for="session-date">Date</label>
+                <input type="date" id="session-date" value="">
+            </div>
+            <div class="form-group">
+                <label for="session-notes">Notes (optional)</label>
+                <textarea id="session-notes" rows="3" placeholder="Workout notes..."></textarea>
+            </div>
+            
+            <div class="workout-flow">
+                <div class="flow-step" id="step-1">
+                    <h3>Step 1: Select Category</h3>
+                    <select id="workout-category" onchange="loadCategoryExercises()">
+                        <option value="">Select Category</option>
+                        <option value="push">Push</option>
+                        <option value="pull">Pull</option>
+                        <option value="legs">Legs</option>
+                        <option value="core">Core</option>
+                        <option value="cardio">Cardio</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                
+                <div class="flow-step" id="step-2" style="display: none;">
+                    <h3>Step 2: Select Exercise</h3>
+                    <select id="workout-exercise" onchange="showSetInputs()">
+                        <option value="">Select Exercise</option>
+                    </select>
+                </div>
+                
+                <div class="flow-step" id="step-3" style="display: none;">
+                    <h3>Step 3: Number of Sets</h3>
+                    <input type="number" id="workout-sets-count" min="1" value="1" onchange="generateSetRows()">
+                </div>
+                
+                <div class="flow-step" id="step-4" style="display: none;">
+                    <h3>Step 4: Enter Set Details</h3>
+                    <div id="workout-sets-list"></div>
+                </div>
+            </div>
+            
+            <button class="btn btn-success btn-block" id="save-workout-btn" onclick="saveWorkoutSession()" style="display: none;">Save Workout</button>
+        </div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="analytics-tab" class="tab-content" style="display: none;">
+        <div class="analytics-controls">
+            <select id="analytics-days" onchange="loadAnalytics()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+            </select>
+            <select id="analytics-exercise" onchange="loadAnalytics()">
+                <option value="">All Exercises</option>
+            </select>
+        </div>
+        
+        <div class="workout-charts">
+            <div class="chart-container">
+                <h3>Weight Progression</h3>
+                <canvas id="weight-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Volume Progression</h3>
+                <canvas id="volume-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Weekly Training Load</h3>
+                <canvas id="weekly-load-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Training Frequency Heatmap</h3>
+                <canvas id="heatmap-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="weekly-summary">
+            <h3>Weekly Summary</h3>
+            <div id="weekly-summary-content"></div>
+        </div>
+    </div>
+
+    <!-- Personal Records Tab -->
+    <div id="records-tab" class="tab-content" style="display: none;">
+        <h2>Personal Records</h2>
+        <div id="pr-list" class="pr-list"></div>
+    </div>
+</div>
+
+<!-- Add Exercise Modal -->
+<div id="add-exercise-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddExerciseModal()">&times;</span>
+        <h2>Add Exercise</h2>
+        <form id="add-exercise-form" onsubmit="addExercise(event)">
+            <div class="form-group">
+                <label for="exercise-name">Exercise Name *</label>
+                <input type="text" id="exercise-name" required>
+            </div>
+            <div class="form-group">
+                <label for="exercise-category">Category *</label>
+                <select id="exercise-category" required>
+                    <option value="push">Push</option>
+                    <option value="pull">Pull</option>
+                    <option value="legs">Legs</option>
+                    <option value="core">Core</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Add Exercise</button>
+        </form>
+    </div>
+</div>
+
+<!-- Log Session Modal -->
+<div id="log-session-modal" class="modal">
+    <div class="modal-content large">
+        <span class="close" onclick="closeLogSessionModal()">&times;</span>
+        <h2>Log Workout Session</h2>
+        <div class="session-logger-modal">
+            <div class="form-group">
+                <label for="modal-session-date">Date</label>
+                <input type="date" id="modal-session-date" value="">
+            </div>
+            <div class="form-group">
+                <label for="modal-session-notes">Notes (optional)</label>
+                <textarea id="modal-session-notes" rows="3" placeholder="Workout notes..."></textarea>
+            </div>
+            
+            <div class="sets-container">
+                <h3>Add Sets</h3>
+                <div id="modal-sets-list"></div>
+                <button class="btn btn-primary" onclick="addModalSetRow()">+ Add Set</button>
+            </div>
+            
+            <button class="btn btn-success btn-block" onclick="saveModalWorkoutSession()">Save Workout</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/workout.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    const sessionDate = document.getElementById('session-date');
+    const modalSessionDate = document.getElementById('modal-session-date');
+    
+    if (sessionDate) sessionDate.value = today;
+    if (modalSessionDate) modalSessionDate.value = today;
+    
+    loadExercises();
+    loadPersonalRecords();
+    loadAnalytics();
+});
+</script>
+{% endblock %}
+

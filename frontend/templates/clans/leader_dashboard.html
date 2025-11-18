@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ clan.name }} - Leader Dashboard{% endblock %}
+
+{% block content %}
+<div class="leader-dashboard-container">
+    <div class="leader-header">
+        <h1>👑 Leader Dashboard - {{ clan.name }}</h1>
+        <a href="{% url 'clan_detail' clan.id %}" class="btn btn-secondary">Back to Clan</a>
+    </div>
+
+    <div class="leader-tabs">
+        <button class="tab-btn active" onclick="showLeaderTab('members', this)">Members</button>
+        <button class="tab-btn" onclick="showLeaderTab('requests', this)">Join Requests</button>
+        <button class="tab-btn" onclick="showLeaderTab('challenges', this)">Challenges</button>
+        <button class="tab-btn" onclick="showLeaderTab('settings', this)">Settings</button>
+    </div>
+
+    <div id="leader-tab-content">
+        <!-- Members Tab -->
+        <div id="members-tab" class="leader-tab-content">
+            <h2>Clan Members</h2>
+            <div id="members-list"></div>
+        </div>
+
+        <!-- Join Requests Tab -->
+        <div id="requests-tab" class="leader-tab-content" style="display: none;">
+            <h2>Pending Join Requests</h2>
+            <div id="join-requests-list"></div>
+        </div>
+
+        <!-- Challenges Tab -->
+        <div id="challenges-tab" class="leader-tab-content" style="display: none;">
+            <h2>Manage Challenges</h2>
+            <button class="btn btn-primary" onclick="showCreateChallengeModal()">+ Create Challenge</button>
+            <div id="challenges-list"></div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="leader-tab-content" style="display: none;">
+            <h2>Clan Settings</h2>
+            <form id="clan-settings-form" onsubmit="updateClanSettings(event)">
+                <div class="form-group">
+                    <label for="clan-name-edit">Clan Name</label>
+                    <input type="text" id="clan-name-edit" value="{{ clan.name }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="clan-description-edit">Description</label>
+                    <textarea id="clan-description-edit" rows="3">{{ clan.description }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="clan-visibility-edit">Visibility</label>
+                    <select id="clan-visibility-edit">
+                        <option value="public" {% if clan.visibility == 'public' %}selected{% endif %}>Public</option>
+                        <option value="private" {% if clan.visibility == 'private' %}selected{% endif %}>Private</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const clanId = {{ clan.id }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadMembers();
+    loadJoinRequests();
+    loadChallenges();
+});
+
+function showLeaderTab(tabName, element) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.leader-tab-content').forEach(tab => tab.style.display = 'none');
+    
+    element.classList.add('active');
+    document.getElementById(`${tabName}-tab`).style.display = 'block';
+}
+
+async function loadMembers() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/members/`);
+        const data = await response.json();
+        
+        const membersList = document.getElementById('members-list');
+        membersList.innerHTML = `
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Level</th>
+                        <th>Role</th>
+                        <th>Contribution XP</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.members.map(member => `
+                        <tr>
+                            <td>${member.username}</td>
+                            <td>${member.level}</td>
+                            <td>${member.role}</td>
+                            <td>${member.total_contribution_xp}</td>
+                            <td>
+                                ${member.role !== 'leader' ? `
+                                    ${member.role !== 'admin' ? `<button class="btn btn-success btn-sm" onclick="promoteMember(${member.id})">Promote</button>` : ''}
+                                    <button class="btn btn-danger btn-sm" onclick="removeMember(${member.id})">Remove</button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (error) {
+        console.error('Error loading members:', error);
+    }
+}
+
+async function loadJoinRequests() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/join-requests/`);
+        const data = await response.json();
+        
+        const requestsList = document.getElementById('join-requests-list');
+        if (data.requests.length === 0) {
+            requestsList.innerHTML = '<p class="empty-state">No pending join requests</p>';
+            return;
+        }
+        
+        requestsList.innerHTML = data.requests.map(req => `
+            <div class="request-card">
+                <div class="request-user">
+                    <strong>${req.user.username}</strong> (Level ${req.user.level})
+                </div>
+                <p>${req.message || 'No message'}</p>
+                <div class="request-actions">
+                    <button class="btn btn-success btn-sm" onclick="approveRequest(${req.user.id})">Approve</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectRequest(${req.user.id})">Reject</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading join requests:', error);
+    }
+}
+
+async function approveRequest(userId) {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/approve-request/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ action: 'approve' }),
+        });
+        
+        if (response.ok) {
+            loadJoinRequests();
+            loadMembers();
+        }
+    } catch (error) {
+        console.error('Error approving request:', error);
+    }
+}
+
+async function rejectRequest(userId) {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/approve-request/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ action: 'reject' }),
+        });
+        
+        if (response.ok) {
+            loadJoinRequests();
+        }
+    } catch (error) {
+        console.error('Error rejecting request:', error);
+    }
+}
+
+async function removeMember(userId) {
+    if (!confirm('Are you sure you want to remove this member?')) return;
+    
+    try {
+        const response = await fetch(`/api/clans/${clanId}/remove-member/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        
+        if (response.ok) {
+            loadMembers();
+        }
+    } catch (error) {
+        console.error('Error removing member:', error);
+    }
+}
+
+async function promoteMember(userId) {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/promote-member/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        
+        if (response.ok) {
+            loadMembers();
+        }
+    } catch (error) {
+        console.error('Error promoting member:', error);
+    }
+}
+
+async function loadChallenges() {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/challenges/`);
+        const data = await response.json();
+        
+        const challengesList = document.getElementById('challenges-list');
+        challengesList.innerHTML = data.challenges.map(challenge => `
+            <div class="challenge-card">
+                <h3>${challenge.title}</h3>
+                <p>${challenge.description}</p>
+                <p>Target: ${challenge.target_xp} XP | Progress: ${challenge.progress}%</p>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading challenges:', error);
+    }
+}
+
+async function updateClanSettings(event) {
+    event.preventDefault();
+    
+    const clanData = {
+        name: document.getElementById('clan-name-edit').value,
+        description: document.getElementById('clan-description-edit').value,
+        visibility: document.getElementById('clan-visibility-edit').value,
+    };
+    
+    try {
+        const response = await fetch(`/api/clans/${clanId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(clanData),
+        });
+        
+        if (response.ok) {
+            alert('Clan settings updated!');
+        }
+    } catch (error) {
+        console.error('Error updating clan settings:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}Clans - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="clans-container">
+    <div class="clans-header">
+        <h1>🏆 Clan Games</h1>
+        <button class="btn btn-primary" onclick="showCreateClanModal()">+ Create Clan</button>
+    </div>
+
+    <div class="clans-filters">
+        <select id="visibility-filter" onchange="loadClans()">
+            <option value="all">All Clans</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+        </select>
+    </div>
+
+    <div id="clans-list" class="clans-grid"></div>
+</div>
+
+<!-- Create Clan Modal -->
+<div id="create-clan-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeCreateClanModal()">&times;</span>
+        <h2>Create New Clan</h2>
+        <form id="create-clan-form" onsubmit="createClan(event)">
+            <div class="form-group">
+                <label for="clan-name">Clan Name *</label>
+                <input type="text" id="clan-name" required>
+            </div>
+            <div class="form-group">
+                <label for="clan-description">Description</label>
+                <textarea id="clan-description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="clan-visibility">Visibility</label>
+                <select id="clan-visibility">
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="clan-max-members">Max Members</label>
+                <input type="number" id="clan-max-members" value="50" min="2" max="100">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Create Clan</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadClans();
+});
+
+async function loadClans() {
+    try {
+        const visibility = document.getElementById('visibility-filter').value;
+        const url = `/api/clans/?visibility=${visibility}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const clansList = document.getElementById('clans-list');
+        clansList.innerHTML = '';
+        
+        if (data.clans.length === 0) {
+            clansList.innerHTML = '<p class="empty-state">No clans found. Create the first one!</p>';
+            return;
+        }
+        
+        data.clans.forEach(clan => {
+            const clanCard = document.createElement('div');
+            clanCard.className = 'clan-card';
+            clanCard.innerHTML = `
+                <div class="clan-icon">${clan.icon || '🏆'}</div>
+                <div class="clan-info">
+                    <h3><a href="/clans/${clan.id}/">${clan.name}</a></h3>
+                    <p>${clan.description || 'No description'}</p>
+                    <div class="clan-meta">
+                        <span>👤 ${clan.member_count}/${clan.max_members}</span>
+                        <span class="badge-${clan.visibility}">${clan.visibility}</span>
+                    </div>
+                </div>
+                <div class="clan-actions">
+                    <a href="/clans/${clan.id}/" class="btn btn-primary btn-sm">View</a>
+                    ${clan.visibility === 'public' ? 
+                        `<button class="btn btn-success btn-sm" onclick="joinClan(${clan.id})">Join</button>` :
+                        `<button class="btn btn-secondary btn-sm" onclick="requestJoinClan(${clan.id})">Request to Join</button>`
+                    }
+                </div>
+            `;
+            clansList.appendChild(clanCard);
+        });
+    } catch (error) {
+        console.error('Error loading clans:', error);
+    }
+}
+
+function showCreateClanModal() {
+    document.getElementById('create-clan-modal').style.display = 'block';
+}
+
+function closeCreateClanModal() {
+    document.getElementById('create-clan-modal').style.display = 'none';
+}
+
+async function createClan(event) {
+    event.preventDefault();
+    
+    const clanData = {
+        name: document.getElementById('clan-name').value,
+        description: document.getElementById('clan-description').value,
+        visibility: document.getElementById('clan-visibility').value,
+        max_members: parseInt(document.getElementById('clan-max-members').value),
+    };
+    
+    try {
+        const response = await fetch('/api/clans/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(clanData),
+        });
+        
+        if (response.ok) {
+            closeCreateClanModal();
+            document.getElementById('create-clan-form').reset();
+            loadClans();
+        } else {
+            alert('Error creating clan');
+        }
+    } catch (error) {
+        console.error('Error creating clan:', error);
+        alert('Error creating clan');
+    }
+}
+
+async function joinClan(clanId) {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/join/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Successfully joined clan!');
+            loadClans();
+        } else {
+            alert(data.error || 'Error joining clan');
+        }
+    } catch (error) {
+        console.error('Error joining clan:', error);
+        alert('Error joining clan');
+    }
+}
+
+async function requestJoinClan(clanId) {
+    try {
+        const response = await fetch(`/api/clans/${clanId}/join/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Join request sent! Waiting for approval.');
+            loadClans();
+        } else {
+            alert(data.error || 'Error requesting to join');
+        }
+    } catch (error) {
+        console.error('Error requesting to join:', error);
+        alert('Error requesting to join');
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

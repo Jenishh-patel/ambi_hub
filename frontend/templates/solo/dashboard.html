@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Welcome back, {{ user.username }}!</h1>
+        <div id="motivational-quote" class="motivational-quote"></div>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-info">
+                <div class="stat-value" id="total-xp">0</div>
+                <div class="stat-label">Total XP</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+                <div class="stat-value" id="current-level">1</div>
+                <div class="stat-label">Level</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔥</div>
+            <div class="stat-info">
+                <div class="stat-value" id="current-streak">0</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+                <div class="stat-value" id="today-tasks">0</div>
+                <div class="stat-label">Today's Tasks</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="xp-progress-container">
+        <div class="xp-progress-label">
+            <span>Level {{ user.current_level }}</span>
+            <span id="xp-progress-text">0%</span>
+        </div>
+        <div class="xp-progress-bar">
+            <div class="xp-progress-fill" id="xp-progress-fill" style="width: 0%"></div>
+        </div>
+        <div class="xp-progress-info">
+            <span id="current-xp">0</span> / <span id="next-level-xp">1000</span> XP
+        </div>
+    </div>
+
+    <div class="dashboard-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+            <a href="{% url 'solo_leveling' %}" class="btn btn-primary">Add Task</a>
+            <a href="{% url 'analytics' %}" class="btn btn-secondary">View Analytics</a>
+            <a href="{% url 'achievements' %}" class="btn btn-secondary">Achievements</a>
+        </div>
+    </div>
+
+    <div class="daily-summary">
+        <h2>Today's Summary</h2>
+        <div id="daily-summary-content" class="summary-content"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardStats();
+    loadMotivationalQuote();
+    loadDailySummary();
+});
+
+async function loadDashboardStats() {
+    try {
+        const response = await fetch('/api/accounts/dashboard-stats/');
+        const data = await response.json();
+        
+        document.getElementById('total-xp').textContent = data.total_xp.toLocaleString();
+        document.getElementById('current-level').textContent = data.current_level;
+        document.getElementById('current-streak').textContent = data.current_streak;
+        document.getElementById('today-tasks').textContent = data.today_tasks;
+        
+        const progress = data.xp_progress;
+        document.getElementById('xp-progress-text').textContent = progress + '%';
+        document.getElementById('xp-progress-fill').style.width = progress + '%';
+        document.getElementById('current-xp').textContent = (data.total_xp % data.xp_for_next_level).toLocaleString();
+        document.getElementById('next-level-xp').textContent = data.xp_for_next_level.toLocaleString();
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+async function loadMotivationalQuote() {
+    try {
+        const response = await fetch('/api/solo/motivational-quote/');
+        const data = await response.json();
+        document.getElementById('motivational-quote').textContent = data.quote;
+    } catch (error) {
+        console.error('Error loading quote:', error);
+    }
+}
+
+async function loadDailySummary() {
+    try {
+        const response = await fetch('/api/solo/daily-summary/');
+        const data = await response.json();
+        
+        const content = document.getElementById('daily-summary-content');
+        content.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">Tasks Completed:</span>
+                <span class="summary-value">${data.tasks_completed}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">XP Earned:</span>
+                <span class="summary-value">${data.xp_earned}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Categories:</span>
+                <span class="summary-value">${data.categories_worked.join(', ') || 'None'}</span>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading daily summary:', error);
+    }
+}
+</script>
+{% endblock %}
+

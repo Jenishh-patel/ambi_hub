@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ clan.name }} Dashboard - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="clan-dashboard-container">
+    <div class="clan-header">
+        <div class="clan-icon-large">{{ clan.icon }}</div>
+        <div class="clan-title">
+            <h1>{{ clan.name }}</h1>
+            <p>{{ clan.description }}</p>
+        </div>
+    </div>
+
+    <div class="clan-stats">
+        <div class="stat-card">
+            <div class="stat-value" id="member-count">-</div>
+            <div class="stat-label">Members</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="total-xp">-</div>
+            <div class="stat-label">Total XP</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="active-challenges">-</div>
+            <div class="stat-label">Active Challenges</div>
+        </div>
+    </div>
+
+    <div class="clan-sections">
+        <div class="clan-section">
+            <h2>Recent Activity</h2>
+            <div id="recent-activity"></div>
+        </div>
+        <div class="clan-section">
+            <h2>Top Contributors</h2>
+            <div id="top-contributors"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const clanId = {{ clan.id }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadClanDashboard();
+});
+
+async function loadClanDashboard() {
+    try {
+        const [clanData, membersData, challengesData, leaderboardData] = await Promise.all([
+            fetch(`/api/clans/${clanId}/`).then(r => r.json()),
+            fetch(`/api/clans/${clanId}/members/`).then(r => r.json()),
+            fetch(`/api/clans/${clanId}/challenges/`).then(r => r.json()),
+            fetch(`/api/clans/${clanId}/leaderboard/`).then(r => r.json()),
+        ]);
+        
+        document.getElementById('member-count').textContent = membersData.members.length;
+        document.getElementById('active-challenges').textContent = 
+            challengesData.challenges.filter(c => c.status === 'active').length;
+        
+        const totalXP = membersData.members.reduce((sum, m) => sum + m.total_contribution_xp, 0);
+        document.getElementById('total-xp').textContent = totalXP.toLocaleString();
+        
+        // Top contributors
+        const topContributors = leaderboardData.leaderboard.slice(0, 5);
+        const contributorsHtml = topContributors.map(entry => `
+            <div class="contributor-item">
+                <span class="rank">#${entry.rank}</span>
+                <span class="username">${entry.user.username}</span>
+                <span class="xp">${entry.contribution_xp} XP</span>
+            </div>
+        `).join('');
+        document.getElementById('top-contributors').innerHTML = contributorsHtml;
+        
+    } catch (error) {
+        console.error('Error loading clan dashboard:', error);
+    }
+}
+</script>
+{% endblock %}
+

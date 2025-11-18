@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Panel - Ambitious Hub{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>🔧 Admin Panel</h1>
+    </div>
+
+    <div class="admin-stats">
+        <div class="stat-card">
+            <h3>Total Users</h3>
+            <div id="total-users">-</div>
+        </div>
+        <div class="stat-card">
+            <h3>Active Users</h3>
+            <div id="active-users">-</div>
+        </div>
+        <div class="stat-card">
+            <h3>Total Tasks</h3>
+            <div id="total-tasks">-</div>
+        </div>
+        <div class="stat-card">
+            <h3>Total Clans</h3>
+            <div id="total-clans">-</div>
+        </div>
+    </div>
+
+    <div class="admin-sections">
+        <div class="admin-section">
+            <h2>Users</h2>
+            <div id="users-list"></div>
+        </div>
+        <div class="admin-section">
+            <h2>Clans</h2>
+            <div id="clans-list"></div>
+        </div>
+        <div class="admin-section">
+            <h2>Global Challenges</h2>
+            <button class="btn btn-primary" onclick="showCreateChallengeModal()">+ Create Challenge</button>
+            <div id="challenges-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadPlatformStats();
+    loadUsers();
+    loadClans();
+    loadGlobalChallenges();
+});
+
+async function loadPlatformStats() {
+    try {
+        const response = await fetch('/api/adminpanel/platform-stats/');
+        const data = await response.json();
+        
+        document.getElementById('total-users').textContent = data.total_users;
+        document.getElementById('active-users').textContent = data.active_users;
+        document.getElementById('total-tasks').textContent = data.total_tasks_completed;
+        document.getElementById('total-clans').textContent = data.total_clans;
+    } catch (error) {
+        console.error('Error loading platform stats:', error);
+    }
+}
+
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/adminpanel/users/');
+        const data = await response.json();
+        
+        const usersList = document.getElementById('users-list');
+        usersList.innerHTML = `
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Level</th>
+                        <th>XP</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.users.map(user => `
+                        <tr>
+                            <td>${user.username}</td>
+                            <td>${user.email}</td>
+                            <td>${user.level}</td>
+                            <td>${user.total_xp}</td>
+                            <td>${user.is_active ? 'Active' : 'Suspended'}</td>
+                            <td>
+                                ${user.is_active ? 
+                                    `<button class="btn btn-danger btn-sm" onclick="suspendUser(${user.id})">Suspend</button>` :
+                                    `<button class="btn btn-success btn-sm" onclick="activateUser(${user.id})">Activate</button>`
+                                }
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+async function loadClans() {
+    try {
+        const response = await fetch('/api/adminpanel/clans/');
+        const data = await response.json();
+        
+        const clansList = document.getElementById('clans-list');
+        clansList.innerHTML = `
+            <div class="clans-grid">
+                ${data.clans.map(clan => `
+                    <div class="clan-card">
+                        <h3>${clan.name}</h3>
+                        <p>Leader: ${clan.leader}</p>
+                        <p>Members: ${clan.member_count}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading clans:', error);
+    }
+}
+
+async function loadGlobalChallenges() {
+    try {
+        const response = await fetch('/api/adminpanel/global-challenges/');
+        const data = await response.json();
+        
+        const challengesList = document.getElementById('challenges-list');
+        challengesList.innerHTML = `
+            <div class="challenges-list">
+                ${data.challenges.map(challenge => `
+                    <div class="challenge-card">
+                        <h3>${challenge.title}</h3>
+                        <p>${challenge.description}</p>
+                        <p>Target: ${challenge.target_xp} XP</p>
+                        <p>Status: ${challenge.status}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading global challenges:', error);
+    }
+}
+
+async function suspendUser(userId) {
+    try {
+        const response = await fetch('/api/adminpanel/users/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ user_id: userId, action: 'suspend' }),
+        });
+        
+        if (response.ok) {
+            loadUsers();
+        }
+    } catch (error) {
+        console.error('Error suspending user:', error);
+    }
+}
+
+async function activateUser(userId) {
+    try {
+        const response = await fetch('/api/adminpanel/users/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ user_id: userId, action: 'activate' }),
+        });
+        
+        if (response.ok) {
+            loadUsers();
+        }
+    } catch (error) {
+        console.error('Error activating user:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+
