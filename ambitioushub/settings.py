@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     'accounts',
     'solo',
     'clans',
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -153,6 +155,10 @@ EMAIL_HOST_PASSWORD = ''
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour
+
+# CORS Configuration for Netlify Frontend
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://localhost:8000').split(',')
+CORS_ALLOW_CREDENTIALS = True
 
 # XP and Level Configuration
 XP_PER_LEVEL = 1000  # Base XP needed per level

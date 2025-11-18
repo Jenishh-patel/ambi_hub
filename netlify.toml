@@ -1,0 +1,44 @@
+[build]
+  command = "pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput"
+  functions = "netlify/functions"
+  publish = "frontend/static"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+
+# API routes handled by Django functions
+[[redirects]]
+  from = "/api/accounts/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/solo/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/clans/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/achievements/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/analytics/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/adminpanel/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+# SPA routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
